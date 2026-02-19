@@ -18,6 +18,8 @@ bot = commands.Bot(command_prefix='!', intents=discord.Intents.all()) # Le préf
 async def test(a):   # actif quand !aide
     await a.send('Test réussi !') # Envoie "Test réussi !" dans le même canal où la commande a été utilisée, lorsque l'utilisateur tape "!test"
     await a.author.send('Test réussi !') # Envoie "Test réussi !" en message privé à l'utilisateur qui a utilisé la commande "!test"
+    log_message(f"{a.author} a utilisé !test dans #{a.channel}")
+
 
 ######################################################################################################
 
@@ -70,8 +72,9 @@ async def avatar(ctx, membre: discord.Member = None):
 #######################################   LOGGER    ##############################################
 
 @bot.event
-async def on_message(content):
-    log_message(f"[{content}")
+async def on_message(ctx):
+    log_message(f"M{ctx}")
+   # await ctx.channel.send("ihih") 
 
 
 ######################################################################################################
