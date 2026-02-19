@@ -72,15 +72,15 @@ async def avatar(ctx, membre: discord.Member = None):
 #######################################   LOGGER    ##############################################
 
 @bot.event
-async def on_message(ctx):
-    log_message(f"M{ctx}")
-   # await ctx.channel.send("ihih") 
+async def on_message(message):
+    log_message(f'Message reçu de {message.author} : {message.content}')
+    await bot.process_commands(message)
 
 
 ######################################################################################################
 
 @bot.command()
-async def aaa(ctx):
+async def ping(ctx):
     ping = round(bot.latency * 1000)  # latency en secondes → on convertit en ms
     a = bot
     await ctx.send(f"Pong 🏓 | {ping} ms")
@@ -90,3 +90,4 @@ async def aaa(ctx):
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(DISCORD_TOKEN) 
+print("Bot démarré avec succès")
