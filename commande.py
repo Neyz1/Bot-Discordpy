@@ -1,8 +1,8 @@
 import time
 import asyncio
-import logging # Pour les logs
 from dotenv import load_dotenv
 import os
+from utils.loggers import log_message
 
 import discord 
 from discord.ext import commands, tasks # Pour les commandes et les tâches répétitives
@@ -69,22 +69,18 @@ async def avatar(ctx, membre: discord.Member = None):
 
 #######################################   LOGGER    ##############################################
 
-@tasks.loop(seconds=1 ) # Cette fonction sera exécutée toutes les secondes
-async def log():
-    print('marche')
+@bot.event
+async def on_message(content):
+    log_message(f"[{content}")
+
+
+######################################################################################################
 
 @bot.command()
 async def aaa(ctx):
     ping = round(bot.latency * 1000)  # latency en secondes → on convertit en ms
     a = bot
     await ctx.send(f"Pong 🏓 | {ping} ms")
-
-#logger = logging.getLogger(__name__)
-#logging.basicConfig(filename='logs.txt', encoding='utf-8', level=logging.INFO)
-#logger.debug('This message should go to the log file')
-#logger.info('So should this')
-#logger.warning('And this, too')
-#logger.error('And non-ASCII stuff, too, like Øresund and Malmö')
 
 ######################################################################################################
 
