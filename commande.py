@@ -1,19 +1,67 @@
+from email import message
 import time
 import asyncio
 from dotenv import load_dotenv
 import os
+import random
+
+from utils.Downloader.lin import *
+from utils.Downloader.win import *
+from tools.downloader import download_video
+
 from utils.loggers import log_message
 
-import discord 
+from discord import Guild, guild
+import discord
+
 from discord.ext import commands, tasks # Pour les commandes et les tâches répétitives
-bot = commands.Bot(command_prefix='!', intents=discord.Intents.all()) # Le préfixe de commande est "!", donc les commandes seront déclenchées par des messages commençant par "!"
+
+bot = commands.Bot(command_prefix='!', intents=discord.Intents.all(), help_command=None) # Le préfixe de commande est "!", donc les commandes seront déclenchées par des messages commençant par "!"
+
+
+
+######################################################################################################
+
+
+@bot.event
+async def on_ready():
+    channel = bot.get_channel(1500600178011537488)
+    fichiers = os.listdir("images")
+    nombre = random.randint(1, len(fichiers)) # Génère un nombre aléatoire entre 1 et le nombre de fichiers dans le dossier "images"
+    await channel.send("Le bot est prêt ! @everyone")
+
+    await channel.send(file=discord.File(f"images/{nombre}.jpg"))
+
+######################################################################################################
+
+
+@bot.command(
+        help="Purge le channel en supprimant tous les messages et en recréant le channel avec le même nom."
+)
+async def clear(ctx):
+    channel = ctx.channel
+    guild = ctx.guild
+
+    channel_name = channel.name
+
+    await channel.delete()
+   
+    new_channel = await guild.create_text_channel(channel_name)
+   
+    log_message(f"Channel #{channel_name} purgé par {ctx.author} (ID NEW CHANNEL: {new_channel.id})")
+
+    id = new_channel.id  # Récupere l'ID du nouveau channel
+    channel = bot.get_channel(id) # Récupère le channel à partir de son ID
+
+    await channel.send(f"Le channel {channel_name} a été purgé ! @everyone")
+
 
 ######################################################################################################
 
 @bot.command(
         description='Test de la commande !test',
         help='Utilisez !test pour vérifier que le bot répond correctement.' ,
-        hidden=False 
+        hidden=False
 )  
 async def test(a):   # actif quand !aide
     await a.send('Test réussi !') # Envoie "Test réussi !" dans le même canal où la commande a été utilisée, lorsque l'utilisateur tape "!test"
@@ -85,7 +133,153 @@ async def ping(ctx):
     a = bot
     await ctx.send(f"Pong 🏓 | {ping} ms")
 
-######################################################################################################
+#######################################    TEST     ##############################################
+
+
+@bot.command(
+        help="Test de la commande !test_embed",
+)
+async def test_embed(bot):
+    message = bot.message  
+
+    embed = discord.Embed(
+        title="Salut toi !",
+        description=f"Message envoyé dans {message.channel.mention}.",
+        color=0x00BFFF,
+        timestamp=discord.utils.utcnow()
+    )
+    
+    embed.add_field(
+        name="Auteur",
+        value=f"{message.author}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Channel",
+        value=message.channel.mention,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Content",
+        value=message.content if message.content else "No content",
+        inline=False
+    )
+
+    embed.set_thumbnail(url=message.author.display_avatar.url)
+
+    await bot.send(embed=embed)
+
+
+
+
+
+
+
+
+#################################    TEST BOUTON    ##############################################
+
+
+class MyView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Clique moi", style=discord.ButtonStyle.primary)
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Bouton cliqué ! ", ephemeral=False)
+
+    @discord.ui.button(label="Rouge", style=discord.ButtonStyle.danger)
+    async def red(self, interaction, button):
+        await interaction.response.send_message("Rouge choisi ", ephemeral=True)
+
+
+
+# --- Commande qui envoie le message ---
+@bot.command(
+        help="Test de la commande !buttons",
+)
+async def buttons(ctx):
+    view = MyView()
+
+    await ctx.send(
+        "Voici un message avec des boutons !",
+        view=view
+    )
+
+
+
+
+
+
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(
+        title="📖 Aide du bot",
+        description="Voici les commandes disponibles",
+        color=0x3498db
+    )
+
+    embed.add_field(name="🧨 !clear", value="Reset un salon", inline=False) # Ajoute une ligne
+    embed.add_field(name="📩 !sendmsg", value="Envoyer un message", inline=False)
+    embed.add_field(name="🧠 !info", value="Infos serveur", inline=False)
+
+    embed.set_footer(text=f"Demandé par {ctx.author}")
+
+    await ctx.send(embed=embed)
+
+
+#################################    Embed OFFRE    ##############################################
+
+
+@bot.command(
+        help="Affiche une offre d'emploi au format embed."
+)
+async def offre(ctx):
+    embed = discord.Embed(
+        title="Offre d'emploi : Développeur Python",
+        description="Nous recherchons un développeur Python expérimenté pour rejoindre notre équipe dynamique.",
+        color=0x8C1D7B,
+        timestamp=discord.utils.utcnow()
+    )
+
+    embed.add_field(name="Entreprise", value="Tech Innovators Inc.", inline=False)
+    embed.add_field(name="Lieu", value="Remote (France)", inline=False)
+    embed.add_field(name="Budget", value="3000€ - 5000€ / mois", inline=False)
+    embed.add_field(name="Tags", value="Python, Django, Remote", inline=False)
+
+    embed.set_thumbnail(url="https://example.com/company_logo.png")
+
+    await ctx.send(embed=embed)
+
+
+
+
+
+#################################    DOWNLOADER    ##############################################
+#  IDEES : 
+#  1.Faire plusieurs boutons pour choisir la catégorie (chill, normal, salle)
+#  2. Mettre la date comme sous dossier
+#  3. Mettre progress bar (ex: "Téléchargement en cours : 50%") et mettre à jour le message à chaque étape du téléchargement
+#  
+#  ATTENTION: Bien mettre ytdlp 
+#
+
+@bot.command(
+        help="Télécharge une vidéo YouTube en MP3 et l'envoie dans le channel."
+)
+async def download(ctx, url: str):
+
+    msg = await ctx.send(f'Téléchargement en cours pour : {url}')
+   # await msg.edit(content=f'Téléchargement terminé pour : {url} !') # Met à jour le message pour indiquer que le téléchargement est terminé
+    process = download_video(url)
+    await asyncio.to_thread(process.wait)
+    await msg.edit(content="✅ Terminé")
+
+
+
+###############################################################################
+
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")

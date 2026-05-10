@@ -9,6 +9,7 @@ import time
 import requests
 from dataclasses import dataclass, field
 from datetime import datetime
+from MySQL import save_jobs_to_db, create_tables, connect_db
 
 # --- Config ---
 KEYWORDS = []
@@ -61,7 +62,7 @@ def fetch_jobs() -> list[JobOffer]:
             if job:
                 jobs.append(job)
 
-        time.sleep(1)
+        #time.sleep(1)
 
     return jobs
 
@@ -106,8 +107,20 @@ def matches_keywords(offer: dict) -> bool:
 
 # --- Main ---
 if __name__ == "__main__":
+    # Connexion et création de la table si elle n'existe pas
+    conn = connect_db()
+    if conn:
+        create_tables(conn)
+        conn.close()
+
+    # Scraping des offres
     jobs = fetch_jobs()
     print(f"\n=== {len(jobs)} offre(s) trouvée(s) ===")
+
+    # Sauvegarde en base de données
+    if jobs:
+        save_jobs_to_db(jobs)
+
     for job in jobs:
         print(f"\n  {job.title}")
         print(f"  {job.url}")
