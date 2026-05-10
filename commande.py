@@ -171,43 +171,7 @@ async def test_embed(bot):
 
     await bot.send(embed=embed)
 
-
-
-
-
-
-
-
-#################################    TEST BOUTON    ##############################################
-
-
-class MyView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Clique moi", style=discord.ButtonStyle.primary)
-    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Bouton cliqué ! ", ephemeral=False)
-
-    @discord.ui.button(label="Rouge", style=discord.ButtonStyle.danger)
-    async def red(self, interaction, button):
-        await interaction.response.send_message("Rouge choisi ", ephemeral=True)
-
-
-
-# --- Commande qui envoie le message ---
-@bot.command(
-        help="Test de la commande !buttons",
-)
-async def buttons(ctx):
-    view = MyView()
-
-    await ctx.send(
-        "Voici un message avec des boutons !",
-        view=view
-    )
-
-
+#############################################################################
 
 
 
@@ -265,16 +229,64 @@ async def offre(ctx):
 #  ATTENTION: Bien mettre ytdlp 
 #
 
+
+
+
+class DownloadView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.value = None
+
+              
+    @discord.ui.button(label="MP3", style=discord.ButtonStyle.green)
+    async def button1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = "MP3"
+        #await interaction.response.send_message("MP3 choisi ", ephemeral=False)
+        self.stop()
+
+    @discord.ui.button(label="MP4", style=discord.ButtonStyle.blurple)
+    async def button2(self, interaction, button):
+        self.value = "MP4"
+        #await interaction.response.send_message("MP4 choisi ", ephemeral=False)
+        self.stop()
+
+    @discord.ui.button(label="Annuler", style=discord.ButtonStyle.danger)
+    async def red(self, interaction, button):
+        self.value = False
+        #await interaction.response.send_message("Téléchargement annulé ", ephemeral=False)
+        self.stop() # attends une interaction, puis stop la view (plus de boutons cliquables)
+
+
+    
+
+
 @bot.command(
         help="Télécharge une vidéo YouTube en MP3 et l'envoie dans le channel."
 )
 async def download(ctx, url: str):
+    view = DownloadView()
+    await ctx.send("Choisis la version que tu veux télécharger :", view=view )
+    await view.wait() # attend que l'utilisateur clique sur un bouton
 
-    msg = await ctx.send(f'Téléchargement en cours pour : {url}')
-   # await msg.edit(content=f'Téléchargement terminé pour : {url} !') # Met à jour le message pour indiquer que le téléchargement est terminé
-    process = download_video(url)
-    await asyncio.to_thread(process.wait)
-    await msg.edit(content="✅ Terminé")
+    if view.value == "MP3":
+        await ctx.send("La version MP3 est en cours de téléchargement", view=None)
+        ext = "-x --audio-format mp3 --audio-quality 0"             
+        process = download_video(url, ext) 
+        
+        
+        await asyncio.to_thread(process.wait)
+  
+    elif view.value == "MP4":
+        await ctx.send("La version MP4 est en cours de téléchargement", view=None)
+        ext = '-f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --merge-output-format mp4'  # Transforme la vidéo en mp4 avec la meilleur qualité dispo       
+        process = download_video(url, ext) 
+
+        await asyncio.to_thread(process.wait)
+
+    elif view.value is False:
+        await ctx.send("Annulation du téléchargement")
+    
+    await ctx.send(content="✅ Terminé")
 
 
 
