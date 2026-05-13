@@ -4,4 +4,6 @@ requests>=2.31
 requests
 beautifulsoup4
 mysql-connector-python
+schedule
+
  

@@ -46,6 +46,7 @@ def create_tables(conn):
 def save_jobs_to_db(jobs: list) -> int:
     """
     Sauvegarde une liste d'objets JobOffer dans la base de données.
+    Les offres sont triées de la plus récente à la plus ancienne.
     Retourne le nombre de nouvelles offres insérées.
     """
     conn = connect_db()
@@ -62,7 +63,10 @@ def save_jobs_to_db(jobs: list) -> int:
     VALUES (%s, %s, %s, %s, %s)
     """
 
-    for job in jobs:
+    # Trier les jobs du plus récent au plus ancien
+    jobs_tries = sorted(jobs, key=lambda j: j.posted_at, reverse=False)
+
+    for job in jobs_tries:
         # Extraction du budget depuis le champ company (ex: "Creators Area (Développeur) — 500€")
         budget = 0
         if "—" in job.company:
@@ -97,6 +101,56 @@ def save_jobs_to_db(jobs: list) -> int:
     conn.close()
     print(f"[MySQL] {inserted} nouvelle(s) offre(s) insérée(s) sur {len(jobs)}")
     return inserted
+
+
+def get_last_id() -> int:
+    """
+    Récupère le dernier ID inséré dans la table offres_creatorsArea.
+    """
+    conn = connect_db()
+    if not conn:
+        return 0
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT MAX(id) FROM offres_creatorsArea")
+        last_id = cursor.fetchone()[0] or 0
+        return last_id
+    except Error as e:
+        print(f"[MySQL] Erreur récupération dernier ID : {e}")
+        return 0
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def get_new_offers(last_known_id: int) -> list[dict]:
+    """
+    Récupère les offres plus récentes que last_known_id.
+    Retourne une liste de dictionnaires avec les colonnes :
+    id, url, pricing, username, tags, posted_at
+    """
+    conn = connect_db()
+    if not conn:
+        return []
+
+    cursor = conn.cursor(dictionary=True)
+    try:
+        query = """
+        SELECT id, url, pricing, username, tags, posted_at
+        FROM offres_creatorsArea
+        WHERE id > %s
+        ORDER BY posted_at DESC
+        """
+        cursor.execute(query, (last_known_id,))
+        results = cursor.fetchall()
+        return results
+    except Error as e:
+        print(f"[MySQL] Erreur récupération nouvelles offres : {e}")
+        return []
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def main():

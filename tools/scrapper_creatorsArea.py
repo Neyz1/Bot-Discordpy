@@ -9,7 +9,7 @@ import time
 import requests
 from dataclasses import dataclass, field
 from datetime import datetime
-from MySQL import save_jobs_to_db, create_tables, connect_db
+from tools.MySQL import save_jobs_to_db, create_tables, connect_db
 
 # --- Config ---
 KEYWORDS = []
@@ -106,7 +106,7 @@ def matches_keywords(offer: dict) -> bool:
 
 
 # --- Main ---
-if __name__ == "__main__":
+def main():
     # Connexion et création de la table si elle n'existe pas
     conn = connect_db()
     if conn:

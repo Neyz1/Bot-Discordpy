@@ -5,10 +5,20 @@ from dotenv import load_dotenv
 import os
 import random
 
+##################################   Downloader   ##############################################
 from utils.Downloader.lin import *
 from utils.Downloader.win import *
 from tools.downloader import download_video
 
+
+###############################   Scrapper CreatorsArea   ########################################
+
+from tools.scrapper_creatorsArea import main
+from tools.MySQL import get_last_id, get_new_offers
+import schedule
+import time
+
+###############################  Logger  ########################################
 from utils.loggers import log_message
 
 from discord import Guild, guild
@@ -22,6 +32,48 @@ bot = commands.Bot(command_prefix='!', intents=discord.Intents.all(), help_comma
 
 ######################################################################################################
 
+@tasks.loop(seconds=60) # Exécute la fonction toutes les 60 secondes
+async def scrape_loop():
+    # Récupérer le dernier ID connu avant le scraping
+    last_known_id = get_last_id()
+
+    # Lancer le scraping
+    await asyncio.to_thread(main)
+
+    # Récupérer les nouvelles offres ajoutées
+    nouvelles_offres = get_new_offers(last_known_id)
+
+    if nouvelles_offres:
+        channel = bot.get_channel(1500600178011537488)
+        for offre in nouvelles_offres:
+            # Les colonnes de la DB dans des variables
+            offre_id = offre["id"]
+            offre_url = offre["url"]
+            offre_pricing = offre["pricing"]
+            offre_username = offre["username"]
+            offre_tags = offre["tags"]
+            offre_posted_at = offre["posted_at"]
+
+            # Création de l'embed
+            embed = discord.Embed(
+                title=f"📢 Nouvelle offre : {offre_username}",
+                url=offre_url,
+                description=f"Une nouvelle mission vient d'être postée sur Creators Area !",
+                color=0x8C1D7B,
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="💰 Budget", value=f"{offre_pricing}€" if offre_pricing else "Non précisé", inline=True)
+            embed.add_field(name="🏷️ Tags", value=offre_tags or "—", inline=True)
+            embed.add_field(name="📅 Publié le", value=str(offre_posted_at)[:10], inline=True)
+            embed.set_footer(text=f"ID #{offre_id}")
+
+            await channel.send(embed=embed)
+        
+        await channel.send(f"✅ **{len(nouvelles_offres)}** nouvelle(s) offre(s) détectée(s) et envoyée(s) !")
+    else:
+        print("[ScrapeLoop] Aucune nouvelle offre détectée.")
+
+       
 
 @bot.event
 async def on_ready():
@@ -29,8 +81,12 @@ async def on_ready():
     fichiers = os.listdir("images")
     nombre = random.randint(1, len(fichiers)) # Génère un nombre aléatoire entre 1 et le nombre de fichiers dans le dossier "images"
     await channel.send("Le bot est prêt ! @everyone")
-
     await channel.send(file=discord.File(f"images/{nombre}.jpg"))
+
+    await scrape_loop.start() # Démarre la boucle de scraping
+  
+
+
 
 ######################################################################################################
 
@@ -232,7 +288,7 @@ async def offre(ctx):
 
 
 
-class DownloadView(discord.ui.View):
+class Extension(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.value = None
@@ -240,38 +296,96 @@ class DownloadView(discord.ui.View):
               
     @discord.ui.button(label="MP3", style=discord.ButtonStyle.green)
     async def button1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() 
         self.value = "MP3"
-        #await interaction.response.send_message("MP3 choisi ", ephemeral=False)
+
         self.stop()
 
     @discord.ui.button(label="MP4", style=discord.ButtonStyle.blurple)
     async def button2(self, interaction, button):
+        await interaction.response.defer() 
         self.value = "MP4"
-        #await interaction.response.send_message("MP4 choisi ", ephemeral=False)
         self.stop()
 
     @discord.ui.button(label="Annuler", style=discord.ButtonStyle.danger)
     async def red(self, interaction, button):
+        await interaction.response.defer() 
         self.value = False
-        #await interaction.response.send_message("Téléchargement annulé ", ephemeral=False)
         self.stop() # attends une interaction, puis stop la view (plus de boutons cliquables)
 
 
     
+class playlist(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.value = None
+
+    @discord.ui.button(label="Chill", style=discord.ButtonStyle.green)
+    async def button1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() 
+        self.value = "Chill"
+        self.stop()
+
+    @discord.ui.button(label="Normal", style=discord.ButtonStyle.blurple)
+    async def button2(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() 
+        self.value = "Normal"
+        self.stop()
+
+    @discord.ui.button(label="Salle", style=discord.ButtonStyle.danger)
+    async def button3(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() 
+        self.value = "Salle"
+        self.stop()
+
+    @discord.ui.button(label="Nope", style=discord.ButtonStyle.grey)
+    async def button4(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() 
+        self.value = "Nope"
+        self.stop()
+
 
 
 @bot.command(
         help="Télécharge une vidéo YouTube en MP3 et l'envoie dans le channel."
 )
 async def download(ctx, url: str):
-    view = DownloadView()
-    await ctx.send("Choisis la version que tu veux télécharger :", view=view )
+    embed = discord.Embed(
+    title="Que souhaite-tu faire aujourd'hui ?",
+    color=0x66D7FF,
+    timestamp=discord.utils.utcnow()
+    )
+    embed.add_field(name="Playlist", value="Choisi dans quelle playlist l'entité sera enregistrée", inline=True)
+    embed.add_field(name="Extension", value="Choisi l'extension de l'entité à télécharger", inline=True)
+
+    nombre = random.randint(1, 1000)
+
+
+    view = playlist()
+
+
+    a = await ctx.send(embed=embed, view=view)
     await view.wait() # attend que l'utilisateur clique sur un bouton
+
+
+    if view.value == "Chill":
+        playlist_name = "Chill"
+    elif view.value == "Normal":
+        playlist_name = "Normal"
+    elif view.value == "Salle":
+        playlist_name = "Salle"
+    else:
+        playlist_name = "Nope"
+   
+    view = Extension()
+    await a.edit(view=view)
+    await view.wait()
+
 
     if view.value == "MP3":
         await ctx.send("La version MP3 est en cours de téléchargement", view=None)
         ext = "-x --audio-format mp3 --audio-quality 0"             
-        process = download_video(url, ext) 
+        process = download_video(url, ext, playlist_name) 
         
         
         await asyncio.to_thread(process.wait)
@@ -279,7 +393,7 @@ async def download(ctx, url: str):
     elif view.value == "MP4":
         await ctx.send("La version MP4 est en cours de téléchargement", view=None)
         ext = '-f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --merge-output-format mp4'  # Transforme la vidéo en mp4 avec la meilleur qualité dispo       
-        process = download_video(url, ext) 
+        process = download_video(url, ext, playlist_name) 
 
         await asyncio.to_thread(process.wait)
 
