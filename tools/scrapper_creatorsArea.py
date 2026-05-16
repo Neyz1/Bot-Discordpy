@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from tools.MySQL import save_jobs_to_db, create_tables, connect_db
 
+
 # --- Config ---
 KEYWORDS = []
 BASE_URL = "https://creatorsarea.fr/api/offers"
@@ -35,7 +36,7 @@ class JobOffer:
     source:      str
     description: str = ""
     tags:        list[str] = field(default_factory=list)
-    posted_at:   str = ""
+    posted_at: datetime | None = None
     scraped_at:  str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -89,7 +90,7 @@ def parse_offer(offer: dict) -> JobOffer | None:
             source      = "creatorsarea",
             description = content[:500],
             tags        = tags,
-            posted_at   = created_at,
+            posted_at   = datetime.fromisoformat(created_at) if created_at else None,
         )
     except Exception as e:
         print(f"[CreatorsArea] Erreur parsing : {e}")
@@ -125,4 +126,4 @@ def main():
         print(f"\n  {job.title}")
         print(f"  {job.url}")
         print(f"  Tags : {', '.join(job.tags) or '—'}")
-        print(f"  Publié le : {job.posted_at[:10]}")
+        print(f"  Publié le : {job.posted_at.strftime('%Y-%m-%d') if job.posted_at else 'Non précisé'}")

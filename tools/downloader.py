@@ -16,7 +16,8 @@ def download_video(url, ext, playlist_name):
         return process
 
     elif os.name == "posix":
-        cmd = rf'.\utils\Downloader\lin\yt-dlp --restrict-filenames --ffmpeg-location ".\utils\Downloader\lin\ffmpeg" {ext} --embed-metadata --embed-thumbnail --convert-thumbnails jpg -o "{chemin}\{playlist_name}\%(uploader)s\%(title)s\%(title)s.%(ext)s" "{url}"'
+        cmd = rf'./utils/Downloader/lin/yt-dlp_linux --restrict-filenames {ext} --embed-metadata --embed-thumbnail --convert-thumbnails jpg -o "{chemin}/{playlist_name}/%(uploader)s/%(title)s/%(title)s.%(ext)s" "{url}"'
         process = subprocess.Popen(cmd, shell=True)
         return process
 
+#--ffmpeg-location "./utils/Downloader/lin/ffmpeg"

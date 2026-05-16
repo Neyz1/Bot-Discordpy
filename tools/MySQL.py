@@ -6,7 +6,7 @@ DB_CONFIG = {
     "host": "localhost",
     "user": "root",
     "password": "",
-    "database": "creatorsArea",
+    "database": "creatorsarea",
     "port": 3306,
     }
 
@@ -29,6 +29,7 @@ def create_tables(conn):
         url VARCHAR(255) NOT NULL UNIQUE,
         pricing INT DEFAULT 0, 
         username VARCHAR(50) NOT NULL,
+        title VARCHAR(255),
         tags VARCHAR(20),
         posted_at DATETIME NOT NULL
     )
@@ -59,8 +60,8 @@ def save_jobs_to_db(jobs: list) -> int:
 
     check_query = "SELECT COUNT(*) FROM offres_creatorsArea WHERE url = %s"
     insert_query = """
-    INSERT INTO offres_creatorsArea (url, pricing, username, tags, posted_at)
-    VALUES (%s, %s, %s, %s, %s)
+    INSERT INTO offres_creatorsArea (url, title, pricing, username, tags, posted_at)
+    VALUES (%s, %s, %s, %s, %s, %s)
     """
 
     # Trier les jobs du plus récent au plus ancien
@@ -87,6 +88,7 @@ def save_jobs_to_db(jobs: list) -> int:
             if not exists:
                 cursor.execute(insert_query, (
                     job.url,
+                    job.title,
                     budget,
                     job.company,
                     tags_str[:20],  # VARCHAR(20)
@@ -128,7 +130,7 @@ def get_new_offers(last_known_id: int) -> list[dict]:
     """
     Récupère les offres plus récentes que last_known_id.
     Retourne une liste de dictionnaires avec les colonnes :
-    id, url, pricing, username, tags, posted_at
+    id, url, title, pricing, username, tags, posted_at
     """
     conn = connect_db()
     if not conn:
@@ -137,7 +139,7 @@ def get_new_offers(last_known_id: int) -> list[dict]:
     cursor = conn.cursor(dictionary=True)
     try:
         query = """
-        SELECT id, url, pricing, username, tags, posted_at
+        SELECT id, url, title, pricing, username, tags, posted_at
         FROM offres_creatorsArea
         WHERE id > %s
         ORDER BY posted_at DESC

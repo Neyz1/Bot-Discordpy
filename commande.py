@@ -1,9 +1,11 @@
 from email import message
 import time
 import asyncio
+from datetime import date
 from dotenv import load_dotenv
 import os
 import random
+
 
 ##################################   Downloader   ##############################################
 from utils.Downloader.lin import *
@@ -31,7 +33,6 @@ bot = commands.Bot(command_prefix='!', intents=discord.Intents.all(), help_comma
 
 
 ######################################################################################################
-
 @tasks.loop(seconds=60) # Exécute la fonction toutes les 60 secondes
 async def scrape_loop():
     # Récupérer le dernier ID connu avant le scraping
@@ -44,10 +45,11 @@ async def scrape_loop():
     nouvelles_offres = get_new_offers(last_known_id)
 
     if nouvelles_offres:
-        channel = bot.get_channel(1500600178011537488)
+        channel = bot.get_channel(1505006167074799738)
         for offre in nouvelles_offres:
             # Les colonnes de la DB dans des variables
             offre_id = offre["id"]
+            offre_title = offre["title"]
             offre_url = offre["url"]
             offre_pricing = offre["pricing"]
             offre_username = offre["username"]
@@ -56,20 +58,20 @@ async def scrape_loop():
 
             # Création de l'embed
             embed = discord.Embed(
-                title=f"📢 Nouvelle offre : {offre_username}",
+                title=offre_title,
                 url=offre_url,
-                description=f"Une nouvelle mission vient d'être postée sur Creators Area !",
-                color=0x8C1D7B,
+                description=f"Proposée par {offre_username}",
+                color=0x23AFD9,
                 timestamp=discord.utils.utcnow()
             )
-            embed.add_field(name="💰 Budget", value=f"{offre_pricing}€" if offre_pricing else "Non précisé", inline=True)
-            embed.add_field(name="🏷️ Tags", value=offre_tags or "—", inline=True)
-            embed.add_field(name="📅 Publié le", value=str(offre_posted_at)[:10], inline=True)
+            embed.add_field(name="Budget", value=f"{offre_pricing}€" if offre_pricing else "Non précisé", inline=True)
+            embed.add_field(name="Tags", value=offre_tags or "—", inline=True)
+            embed.add_field(name="Publié le", value=str(offre_posted_at)[:10], inline=True)
             embed.set_footer(text=f"ID #{offre_id}")
 
             await channel.send(embed=embed)
         
-        await channel.send(f"✅ **{len(nouvelles_offres)}** nouvelle(s) offre(s) détectée(s) et envoyée(s) !")
+        await channel.send(f"**{len(nouvelles_offres)}** nouvelle(s) offre(s) détectée(s) et envoyée(s) !")
     else:
         print("[ScrapeLoop] Aucune nouvelle offre détectée.")
 
@@ -110,20 +112,6 @@ async def clear(ctx):
     channel = bot.get_channel(id) # Récupère le channel à partir de son ID
 
     await channel.send(f"Le channel {channel_name} a été purgé ! @everyone")
-
-
-######################################################################################################
-
-@bot.command(
-        description='Test de la commande !test',
-        help='Utilisez !test pour vérifier que le bot répond correctement.' ,
-        hidden=False
-)  
-async def test(a):   # actif quand !aide
-    await a.send('Test réussi !') # Envoie "Test réussi !" dans le même canal où la commande a été utilisée, lorsque l'utilisateur tape "!test"
-    await a.author.send('Test réussi !') # Envoie "Test réussi !" en message privé à l'utilisateur qui a utilisé la commande "!test"
-    log_message(f"{a.author} a utilisé !test dans #{a.channel}")
-
 
 ######################################################################################################
 
@@ -189,47 +177,8 @@ async def ping(ctx):
     a = bot
     await ctx.send(f"Pong 🏓 | {ping} ms")
 
-#######################################    TEST     ##############################################
-
-
-@bot.command(
-        help="Test de la commande !test_embed",
-)
-async def test_embed(bot):
-    message = bot.message  
-
-    embed = discord.Embed(
-        title="Salut toi !",
-        description=f"Message envoyé dans {message.channel.mention}.",
-        color=0x00BFFF,
-        timestamp=discord.utils.utcnow()
-    )
-    
-    embed.add_field(
-        name="Auteur",
-        value=f"{message.author}",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="Channel",
-        value=message.channel.mention,
-        inline=False
-    )
-    
-    embed.add_field(
-        name="Content",
-        value=message.content if message.content else "No content",
-        inline=False
-    )
-
-    embed.set_thumbnail(url=message.author.display_avatar.url)
-
-    await bot.send(embed=embed)
 
 #############################################################################
-
-
 
 
 @bot.command()
@@ -237,55 +186,23 @@ async def help(ctx):
     embed = discord.Embed(
         title="📖 Aide du bot",
         description="Voici les commandes disponibles",
-        color=0x3498db
+        color=0x23AFD9
     )
 
-    embed.add_field(name="🧨 !clear", value="Reset un salon", inline=False) # Ajoute une ligne
-    embed.add_field(name="📩 !sendmsg", value="Envoyer un message", inline=False)
-    embed.add_field(name="🧠 !info", value="Infos serveur", inline=False)
+    embed.add_field(name="!clear", value="Reset un salon", inline=False) # Ajoute une ligne
+    embed.add_field(name="!sendmsg", value="Envoyer un message", inline=False)
+    embed.add_field(name="!info", value="Infos serveur", inline=False)
+    embed.add_field(name="!decompte", value="Démarre un décompte de X secondes", inline=False)
+    embed.add_field(name="!rappel", value="Programme une alerte", inline=False)
+    embed.add_field(name="!avatar", value="Affiche l'avatar de l'utilisateur", inline=False)
+    embed.add_field(name="!ping", value="Affiche la latence du bot", inline=False)
 
     embed.set_footer(text=f"Demandé par {ctx.author}")
 
     await ctx.send(embed=embed)
 
 
-#################################    Embed OFFRE    ##############################################
-
-
-@bot.command(
-        help="Affiche une offre d'emploi au format embed."
-)
-async def offre(ctx):
-    embed = discord.Embed(
-        title="Offre d'emploi : Développeur Python",
-        description="Nous recherchons un développeur Python expérimenté pour rejoindre notre équipe dynamique.",
-        color=0x8C1D7B,
-        timestamp=discord.utils.utcnow()
-    )
-
-    embed.add_field(name="Entreprise", value="Tech Innovators Inc.", inline=False)
-    embed.add_field(name="Lieu", value="Remote (France)", inline=False)
-    embed.add_field(name="Budget", value="3000€ - 5000€ / mois", inline=False)
-    embed.add_field(name="Tags", value="Python, Django, Remote", inline=False)
-
-    embed.set_thumbnail(url="https://example.com/company_logo.png")
-
-    await ctx.send(embed=embed)
-
-
-
-
-
 #################################    DOWNLOADER    ##############################################
-#  IDEES : 
-#  1.Faire plusieurs boutons pour choisir la catégorie (chill, normal, salle)
-#  2. Mettre la date comme sous dossier
-#  3. Mettre progress bar (ex: "Téléchargement en cours : 50%") et mettre à jour le message à chaque étape du téléchargement
-#  
-#  ATTENTION: Bien mettre ytdlp 
-#
-
-
 
 
 class Extension(discord.ui.View):
@@ -347,7 +264,7 @@ class playlist(discord.ui.View):
 
 
 @bot.command(
-        help="Télécharge une vidéo YouTube en MP3 et l'envoie dans le channel."
+        help="Télécharge une vidéo YouTube en MP3/MP4 et l'envoie dans le channel."
 )
 async def download(ctx, url: str):
     embed = discord.Embed(
@@ -386,26 +303,60 @@ async def download(ctx, url: str):
         await ctx.send("La version MP3 est en cours de téléchargement", view=None)
         ext = "-x --audio-format mp3 --audio-quality 0"             
         process = download_video(url, ext, playlist_name) 
-        
-        
         await asyncio.to_thread(process.wait)
-  
+        extension = "mp3"
+   
     elif view.value == "MP4":
         await ctx.send("La version MP4 est en cours de téléchargement", view=None)
         ext = '-f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --merge-output-format mp4'  # Transforme la vidéo en mp4 avec la meilleur qualité dispo       
         process = download_video(url, ext, playlist_name) 
-
         await asyncio.to_thread(process.wait)
+        extension = "mp4"
 
     elif view.value is False:
         await ctx.send("Annulation du téléchargement")
+        return
     
-    await ctx.send(content="✅ Terminé")
+    # --- Envoi du fichier téléchargé ---
+    sous_dossier = date.today().isoformat()
+    chemin_base = os.path.join("output", sous_dossier, playlist_name)
 
+    # Attendre un peu que le fichier soit bien écrit sur le disque
+    await asyncio.sleep(1)
 
+    # Chercher récursivement le fichier le plus récent avec la bonne extension
+    fichier_trouve = None
+    try:
+        if os.path.exists(chemin_base):
+            for racine, dossiers, fichiers in os.walk(chemin_base):
+                for f in fichiers:
+                    if f.endswith(f".{extension}"):
+                        chemin_fichier = os.path.join(racine, f)
+                        if fichier_trouve is None or os.path.getmtime(chemin_fichier) > os.path.getmtime(fichier_trouve):
+                            fichier_trouve = chemin_fichier
+        else:
+            await ctx.send(f"Le dossier {chemin_base} n'existe pas.")
+            return
+    except Exception as e:
+        await ctx.send(f"Erreur lors de la recherche du fichier : {e}")
+        return
+
+    if fichier_trouve and os.path.exists(fichier_trouve):
+        # Vérifier la taille (Discord limite à 25MB, 100MB avec Nitro)
+        taille = os.path.getsize(fichier_trouve)
+        if taille > 25 * 1024 * 1024:
+            await ctx.send(f"Le fichier est trop volumineux ({taille / 1024 / 1024:.1f} Mo). Envoi impossible (limite 25 Mo).")
+        else:
+            try:
+                # Utiliser le chemin absolu pour éviter les problèmes
+                chemin_absolu = os.path.abspath(fichier_trouve)
+                await ctx.send(content="Téléchargement terminé ! Voici le fichier :", file=discord.File(chemin_absolu))
+            except Exception as e:
+                await ctx.send(f"Erreur lors de l'envoi du fichier : {e}")
+    else:
+        await ctx.send(f"Terminé (fichier .{extension} non trouvé dans {chemin_base})")
 
 ###############################################################################
-
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
