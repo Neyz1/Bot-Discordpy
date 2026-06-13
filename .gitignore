@@ -1,6 +1,6 @@
 .env
 logs.txt
-/venv/
+venv/
 __pycache__/
 output/
 utils/Downloader/
